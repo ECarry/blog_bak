@@ -1,6 +1,6 @@
 ---
 layout: post
-title: K8s
+title: K8s 二进制安装
 tags: [K8s]
 index_img: /img/k8s/k8s_logo.jpg
 banner_img: /img/k8s/k8s_banner.png
