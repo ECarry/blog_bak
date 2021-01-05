@@ -18,5 +18,5 @@ date: 2021-01-05 09:34:31
 
 ![](/img/linux_dns/dns_1.png)
 
-## 1.3 DNS 工作原理
+# 二、 DNS Server
 
