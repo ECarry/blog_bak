@@ -12,9 +12,9 @@ ____
 ### Tech Stack 🌐
 - Learning/Using
 
-|<img height=60px src="/img/icon/shell.png">|<img height=60px src="/img/icon/python.png"> |<img height=60px src="/img/icon/nginx.png">  |<img height=60px src="/img/icon/SQL.png"> |<img height=60px src="/img/icon/linux.png"> |<img height=60px src="/img/icon/docker.png"> |<img height=60px src="/img/icon/ks.png">|<img height=60px src="/img/icon/zabbix.png">|
-|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
-|Shell|Python|Nginx|MySQL|Linux|Docker|K8s|Zabbix|
+|<img height=60px src="/img/icon/shell.png">|<img height=60px src="/img/icon/python.png"> |<img height=60px src="/img/icon/nginx.png">  |<img height=60px src="/img/icon/SQL.png"> |<img height=60px src="/img/icon/linux.png"> |<img height=60px src="/img/icon/docker.png"> |<img height=60px src="/img/icon/ks.png">|<img height=60px src="/img/icon/zabbix.png">|<img height=60px src="/img/icon/ansible.png">|
+|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|:---:|
+|Shell|Python|Nginx|MySQL|Linux|Docker|K8s|Zabbix|Ansible|
 
 
 

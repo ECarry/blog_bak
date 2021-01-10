@@ -106,9 +106,39 @@ ansible 2.9.16
 - **Ad-Hoc** 即利用 ansible 命令，主要用于临时命令使用场景
 - **Ansible-playbook** 主要用于长期规划好的，大型项目的场景，需要有前期的规划过程
 
+### ansible-doc 
 
+用来显示模块帮助
 
+格式
 
+```shell
+ansible-doc [options] [module...]
+
+-l, --list          #列出可用模块
+-s, --snippet       #显示指定模块的playbook片段
+```
+### ansible 
+
+此工具通过ssh协议，实现对远程主机的配置管理、应用部署、任务执行等功能
+
+格式
+
+```shell
+ansible <host-pattern> [-m module_name] [-a args]
+
+--version           #显示版本
+-m module           #指定模块，默认为command
+-v                  #详细过程 –vv  -vvv更详细
+--list-hosts        #显示主机列表，可简写 --list
+-k, --ask-pass      #提示输入ssh连接密码，默认Key验证    
+-C, --check         #检查，并不执行
+-T, --timeout=TIMEOUT #执行命令的超时时间，默认10s
+-u, --user=REMOTE_USER #执行远程执行的用户
+-b, --become        #代替旧版的sudo 切换
+--become-user=USERNAME  #指定sudo的runas用户，默认为root
+-K, --ask-become-pass  #提示输入sudo时的口令
+```
 
 
 
