@@ -103,7 +103,7 @@ ansible 2.9.16
 
 ### 利用ansible实现管理的主要方式：
 
-- **Ad-Hoc** 即利用 ansible 命令，主要用于临时命令使用场景
+- **Ad-Hoc** 即利用 ansible 命令，主要用于临时命令使用场景（单条的执行命令）
 - **Ansible-playbook** 主要用于长期规划好的，大型项目的场景，需要有前期的规划过程
 
 ### ansible-doc 
@@ -117,6 +117,19 @@ ansible-doc [options] [module...]
 
 -l, --list          #列出可用模块
 -s, --snippet       #显示指定模块的playbook片段
+
+#显示有 3387 个模块
+[root@ops ~]# ansible-doc -l|wc -l
+3387
+# 显示某个模块详细信息
+[root@ops ~]# ansible-doc ping
+# 显示某个模块简介
+[root@ops ~]# ansible-doc -s ping
+- name: Try to connect to host, verify a usable python and return `pong' on success
+  ping:
+      data:                  # Data to return for the `ping' return value. If this parameter is set to `crash', the module will
+                               cause an exception.
+
 ```
 ### ansible 
 
@@ -140,15 +153,66 @@ ansible <host-pattern> [-m module_name] [-a args]
 -K, --ask-become-pass  #提示输入sudo时的口令
 ```
 
+**ansible 的 Host-pattern**
 
+用于匹配被控制的主机列表
 
+ALL: 表示所有 Inventory 中的所有主机
 
+**示例：**
 
+ping 所有主机
+```shell 
+ansible all –m ping
+```
 
+ping webserver 和 dbserver 组里的主机
+```shell 
+ansible "webserver:&dbserver" –m ping
+```
 
-## 1.3 管理节点与被管理节点建立 ssh 信任关系
+ping 在 webserver 组但不在 dbserver 组里的主机（使用单引号）
+```shell  
+ansible 'webserver:!dbserver' –m ping
+```
 
-### 1.3.1 管理节点（ansible）中创建密钥对
+#### ansible 命令执行过程
+
+1. 加载自己的配置文件 默认/etc/ansible/ansible.cfg
+
+2. 加载自己对应的模块文件，如：command
+
+3. 通过ansible将模块或命令生成对应的临时py文件，并将该文件传输至远程服务器的对应执行用户$HOME/.ansible/tmp/ansible-tmp-数字/XXX.PY文件
+
+4. 给文件 +x 执行
+
+5. 执行并返回结果
+
+6. 删除临时py文件，退出
+
+#### ansible 的执行状态
+
+```shell
+[colors]
+#highlight = white
+#verbose = blue
+#warn = bright purple
+#error = red
+#debug = dark gray
+#deprecate = purple
+#skip = cyan
+#unreachable = red
+#ok = green             #绿色：执行成功并且不需要做改变的操作
+#changed = yellow       #黄色：执行成功并且对目标主机做变更
+#diff_add = green       
+#diff_remove = red      
+#diff_lines = cyan
+#红色：执行失败
+```
+
+## 2.2 管理节点与被管理节点建立 ssh 信任关系
+
+### 2.2.1 管理节点（ansible）中创建密钥对
 
 ```shell
 ssh-ketgen -t rsa
@@ -156,7 +220,7 @@ ssh-ketgen -t rsa
 id_rsa  id_rsa.pub
 ```
 
-### 1.2.2 将本地公钥传输到被管理节点
+### 2.2.2 将本地公钥传输到被管理节点
 
 每个管理节点都需要传输，使用 `ssh-copy-id root@ip` 传输公钥：
 
@@ -177,9 +241,9 @@ Now try logging into the machine, with:   "ssh 'root@192.168.2.176'"
 and check to make sure that only the key(s) you wanted were added.
 ```
 
-## 1.3 测试与被管理节点的网络连通性
+## 2.3 测试与被管理节点的网络连通性
 
-### 1.3.1  测试初始连通性
+### 2.3.1 测试初始连通性
 
 ```shell
 [root@ops ~]# ansible all -i 192.168.2.176,192.168.2.181 -m ping
@@ -199,7 +263,7 @@ and check to make sure that only the key(s) you wanted were added.
 }
 ```
 
-### 1.3.2 测试配置客户端是否成功
+### 2.3.2 测试配置客户端是否成功
 
 创建 `/tmp/test.conf` ，将配置文件传输到所有客户端 `/tmp` 下，检测是否成功：
 
@@ -244,36 +308,27 @@ and check to make sure that only the key(s) you wanted were added.
 }
 ```
 
-# 二、Ansible 资产
+## 2.4 Ansible 资产
 
 Ansible 的资产为**静态资产**和**动态资产**。
 
-## 2.1 静态资产
+### 2.4.1 静态资产
 
-默认静态资产文件位于 `/etc/ansible/hosts`。
+默认静态资产文件位于 `/etc/ansible/hosts`
 
 ```shell
 [root@ops ~]# ls /etc/ansible/
 ansible.cfg  hosts  roles
 [root@ops ansible]# cat hosts
-# This is the default ansible 'hosts' file.
-#
-# It should live in /etc/ansible/hosts
-#
-#   - Comments begin with the '#' character
-#   - Blank lines are ignored
-#   - Groups of hosts are delimited by [header] elements
-#   - You can enter hostnames or ip addresses
-#   - A hostname/ip can be a member of multiple groups
 
-# Ex 1: Ungrouped hosts, specify before any group headers.
+# Ex 1: 无组的主机, 需要在所有组的前面。
 
 ## green.example.com
 ## blue.example.com
 ## 192.168.100.1
 ## 192.168.100.10
 
-# Ex 2: A collection of hosts belonging to the 'webservers' group
+# Ex 2: 属于 'webservers' group
 
 ## [webservers]
 ## alpha.example.org
@@ -302,7 +357,7 @@ ansible.cfg  hosts  roles
 
 ```
 
-## 2.1.1 自定义资产文件
+#### 自定义资产文件
 
 创建自定义资产文件 test.ini
 
@@ -322,7 +377,9 @@ ansible.cfg  hosts  roles
     192.168.2.181
 ```
 
-## 2.1.2 验证
+<font color=red>提示：可在 IP 后面加入端口号，如 192.168.2.176:2333 (2333端口为改后的ssh端口)</font>
+
+
 
 
 
