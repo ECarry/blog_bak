@@ -88,10 +88,180 @@ ansible 2.9.16
 
 ## 1.2 使用 pip 安装
 
+`pip install ansible`
 
 # 二、Ansible 工具及演示
 
-## 2.1 工具
+## 2.1 管理节点与被管理节点建立 ssh 信任关系
+
+### 2.1.1 管理节点（ansible）中创建密钥对
+
+```shell
+ssh-keygen -t rsa
+[root@ops ~]# ls .ssh/
+id_rsa  id_rsa.pub
+```
+
+### 2.1.2 将本地公钥传输到被管理节点
+
+每个管理节点都需要传输，使用 `ssh-copy-id root@ip` 传输公钥：
+
+```shell
+[root@ops ~]# ssh-copy-id root@192.168.2.176
+/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/root/.ssh/id_rsa.pub"
+The authenticity of host '192.168.2.176 (192.168.2.176)' can't be established.
+ECDSA key fingerprint is SHA256:aiIpXJC+jZccDcmkShcEPuUUpOXpLioVmKWDy9wOpI8.
+ECDSA key fingerprint is MD5:cc:d7:5a:0c:54:a4:d2:c9:9c:c3:c6:cb:4a:3e:31:bd.
+Are you sure you want to continue connecting (yes/no)? yes
+/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
+/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
+root@192.168.2.176's password:
+
+Number of key(s) added: 1
+
+Now try logging into the machine, with:   "ssh 'root@192.168.2.176'"
+and check to make sure that only the key(s) you wanted were added.
+```
+
+## 2.2 测试与被管理节点的网络连通性
+
+### 2.2.1 测试初始连通性
+
+```shell
+[root@ops ~]# ansible all -i 192.168.2.176,192.168.2.181 -m ping
+192.168.2.176 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+192.168.2.181 | SUCCESS => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": false,
+    "ping": "pong"
+}
+```
+
+### 2.2.2 测试配置客户端是否成功
+
+创建 `/tmp/test.conf` ，将配置文件传输到所有客户端 `/tmp` 下，检测是否成功：
+
+```shell
+[root@ops ~]# touch /tmp/test.conf
+[root@ops ~]# ansible all -i 192.168.2.176,192.168.2.181 -m copy -a "src=/tmp/test.conf dest=/tmp/test.conf"
+192.168.2.176 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "dest": "/tmp/test.conf",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "d41d8cd98f00b204e9800998ecf8427e",
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 0,
+    "src": "/root/.ansible/tmp/ansible-tmp-1610176524.97-10342-150200890766442/source",
+    "state": "file",
+    "uid": 0
+}
+192.168.2.181 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    },
+    "changed": true,
+    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
+    "dest": "/tmp/test.conf",
+    "gid": 0,
+    "group": "root",
+    "md5sum": "d41d8cd98f00b204e9800998ecf8427e",
+    "mode": "0644",
+    "owner": "root",
+    "secontext": "unconfined_u:object_r:admin_home_t:s0",
+    "size": 0,
+    "src": "/root/.ansible/tmp/ansible-tmp-1610176524.98-10344-72921048389134/source",
+    "state": "file",
+    "uid": 0
+}
+```
+
+## 2.3 Ansible 资产
+
+Ansible 的资产为**静态资产**和**动态资产**。
+
+### 2.3.1 静态资产
+
+默认静态资产文件位于 `/etc/ansible/hosts`
+
+```shell
+[root@ops ~]# ls /etc/ansible/
+ansible.cfg  hosts  roles
+[root@ops ansible]# cat hosts
+
+# Ex 1: 无组的主机, 需要在所有组的前面。
+
+## green.example.com
+## blue.example.com
+## 192.168.100.1
+## 192.168.100.10
+
+# Ex 2: 属于 'webservers' group
+
+## [webservers]
+## alpha.example.org
+## beta.example.org
+## 192.168.1.100
+## 192.168.1.110
+
+# If you have multiple hosts following a pattern you can specify
+# them like this:
+
+## www[001:006].example.com
+
+# Ex 3: A collection of database servers in the 'dbservers' group
+
+## [dbservers]
+##
+## db01.intranet.mydomain.net
+## db02.intranet.mydomain.net
+## 10.25.1.56
+## 10.25.1.57
+
+# Here's another example of host ranges, this time there are no
+# leading 0s:
+
+## db-[99:101]-node.example.com
+
+```
+
+#### 自定义资产文件
+
+创建自定义资产文件 test.ini
+
+```shell
+[root@ops ~]# cat test.ini
+[test]
+192.168.2.176
+192.168.2.181
+```
+
+列出自定义资产文件里的所有主机 `ansible all -i test.ini --list-hosts`，或者列出某个组的主机 `ansible test -i test.ini --list-hosts`
+
+```shell
+[root@ops ~]# ansible all -i test.ini --list-hosts
+  hosts (2):
+    192.168.2.176
+    192.168.2.181
+```
+
+<font color=red>提示：可在 IP 后面加入端口号，如 192.168.2.176:2333 (2333端口为改后的ssh端口)</font>
+
+## 2.4 工具
 
 - `/usr/bin/ansible` 主程序，临时命令执行工具
 - `/usr/bin/ansible-doc` 查看配置文档，模块功能查看工具
@@ -101,12 +271,13 @@ ansible 2.9.16
 - `/usr/bin/ansible-vault` 文件加密工具
 - `/usr/bin/ansible-console` 基于Console界面与用户交互的执行工具
 
-### 利用ansible实现管理的主要方式：
+**利用ansible实现管理的主要方式：**
 
 - **Ad-Hoc** 即利用 ansible 命令，主要用于临时命令使用场景（单条的执行命令）
 - **Ansible-playbook** 主要用于长期规划好的，大型项目的场景，需要有前期的规划过程
 
-### ansible-doc 
+
+### 2.4.1 ansible-doc 
 
 用来显示模块帮助
 
@@ -131,7 +302,7 @@ ansible-doc [options] [module...]
                                cause an exception.
 
 ```
-### ansible 
+### 2.4.2 ansible 
 
 此工具通过ssh协议，实现对远程主机的配置管理、应用部署、任务执行等功能
 
@@ -202,184 +373,317 @@ ansible 'webserver:!dbserver' –m ping
 #deprecate = purple
 #skip = cyan
 #unreachable = red
-#ok = green             #绿色：执行成功并且不需要做改变的操作
-#changed = yellow       #黄色：执行成功并且对目标主机做变更
+#ok = green             
+#changed = yellow       
 #diff_add = green       
 #diff_remove = red      
 #diff_lines = cyan
+
 #红色：执行失败
+#黄色：执行成功并且对目标主机做变更
+#绿色：执行成功并且不需要做改变的操作
 ```
 
-## 2.2 管理节点与被管理节点建立 ssh 信任关系
+### 2.4.3 ansible-galaxy
 
-### 2.2.1 管理节点（ansible）中创建密钥对
+此工具会连接 https://galaxy.ansible.com 下载相应的 roles
+
+**示例：**
 
 ```shell
-ssh-ketgen -t rsa
-[root@ops ~]# ls .ssh/
-id_rsa  id_rsa.pub
+#列出所有已安装的galaxy
+ansible-galaxy list
+#安装galaxy
+ansible-galaxy install geerlingguy.mysql
+ansible-galaxy install geerlingguy.redis
+#删除galaxy
+ansible-galaxy remove geerlingguy.redis
 ```
 
-### 2.2.2 将本地公钥传输到被管理节点
+### 2.4.4 ansible-vault
 
-每个管理节点都需要传输，使用 `ssh-copy-id root@ip` 传输公钥：
+此工具可以用于加密解密yml文件
+
+**格式：**
+`ansible-vault [create|decrypt|edit|encrypt|rekey|view]`
 
 ```shell
-[root@ops ~]# ssh-copy-id root@192.168.2.176
-/usr/bin/ssh-copy-id: INFO: Source of key(s) to be installed: "/root/.ssh/id_rsa.pub"
-The authenticity of host '192.168.2.176 (192.168.2.176)' can't be established.
-ECDSA key fingerprint is SHA256:aiIpXJC+jZccDcmkShcEPuUUpOXpLioVmKWDy9wOpI8.
-ECDSA key fingerprint is MD5:cc:d7:5a:0c:54:a4:d2:c9:9c:c3:c6:cb:4a:3e:31:bd.
-Are you sure you want to continue connecting (yes/no)? yes
-/usr/bin/ssh-copy-id: INFO: attempting to log in with the new key(s), to filter out any that are already installed
-/usr/bin/ssh-copy-id: INFO: 1 key(s) remain to be installed -- if you are prompted now it is to install the new keys
-root@192.168.2.176's password:
-
-Number of key(s) added: 1
-
-Now try logging into the machine, with:   "ssh 'root@192.168.2.176'"
-and check to make sure that only the key(s) you wanted were added.
+ansible-vault encrypt hello.yml     #加密
+ansible-vault decrypt hello.yml     #解密
+ansible-vault view hello.yml        #查看
+ansible-vault edit  hello.yml       #编辑加密文件
+ansible-vault rekey  hello.yml      #修改口令
+ansible-vault create new.yml        #创建新文件
 ```
 
-## 2.3 测试与被管理节点的网络连通性
+## 2.5 常用模块
 
-### 2.3.1 测试初始连通性
+查看已安装的模块 `ansible-doc -l`
+
+### 2.5.1 Command 模块
+
+**功能：**在远程主机执行命令，此为默认模块，可忽略 -m 选项
+
+<font color=red>注意：</font>此命令不支持 $VARNAME < > | ; & 等，用shell模块实现（变量，通配符，重定向，管道等都不支持）
+
+**示例：**
+
+```
+# 在每台主机上创建 hello.txt
+ansible all -m command -a 'touch hello.txt'
+# 查看 web 组主机的版本号
+ansible web -m command -a 'chdir=/etc cat centos-release'
+web1 | CHANGED | rc=0 >>
+CentOS Linux release 7.8.2003 (Core)
+web2 | CHANGED | rc=0 >>
+CentOS Linux release 7.8.2003 (Core)
+# 在 web 组主机上安装数据库
+ansible web -m command -a 'yum install -y mariadb'
+```
+
+无法使用变量的参数演示：
 
 ```shell
-[root@ops ~]# ansible all -i 192.168.2.176,192.168.2.181 -m ping
-192.168.2.176 | SUCCESS => {
-    "ansible_facts": {
-        "discovered_interpreter_python": "/usr/bin/python"
-    },
-    "changed": false,
-    "ping": "pong"
+ansible web -m command -a 'echo $HOSTNAME'
+web1 | CHANGED | rc=0 >>
+$HOSTNAME
+web2 | CHANGED | rc=0 >>
+$HOSTNAME
+```
+
+### 2.5.2 Shell 模块
+
+相当于 Command 的升级版，能够支持更多的参数，可以将默认的 command 模块更改为 shell 模块，修改`/etc/ansible/ansible.cfg `
+```conf
+# default module name for /usr/bin/ansible
+#module_name = command
+```
+
+**示例：**
+
+```shell
+# 能够使用变量
+ansible web -m shell -a 'echo $HOSTNAME'
+web1 | CHANGED | rc=0 >>
+web1.web.com
+web2 | CHANGED | rc=0 >>
+web2.web.com
+# 重定向也支持
+ansible web -m shell -a 'echo hello > hello.txt'
+web2 | CHANGED | rc=0 >>
+
+web1 | CHANGED | rc=0 >>
+ansible web -m shell -a 'cat hello.txt'
+web1 | CHANGED | rc=0 >>
+hello
+web2 | CHANGED | rc=0 >>
+hello
+```
+
+### 2.5.3 Script 模块
+
+**功能：**在远程主机上运行 ansible 服务器上的脚本
+
+```shell
+# 创建脚本，功能是显示主机名
+cat test.sh 
+#!/bin/bash
+
+echo "my host name is $HOSTNAME."
+# 在 web 组的主机上执行
+ansible web -m script -a "/root/test.sh" 
+web1 | CHANGED => {
+    "changed": true, 
+    "rc": 0, 
+    "stderr": "Shared connection to web1 closed.\r\n", 
+    "stderr_lines": [
+        "Shared connection to web1 closed."
+    ], 
+    "stdout": "my host name is web1.web.com.\r\n", 
+    "stdout_lines": [
+        "my host name is web1.web.com."
+    ]
 }
-192.168.2.181 | SUCCESS => {
-    "ansible_facts": {
-        "discovered_interpreter_python": "/usr/bin/python"
-    },
-    "changed": false,
-    "ping": "pong"
+web2 | CHANGED => {
+    "changed": true, 
+    "rc": 0, 
+    "stderr": "Shared connection to web2 closed.\r\n", 
+    "stderr_lines": [
+        "Shared connection to web2 closed."
+    ], 
+    "stdout": "my host name is web2.web.com.\r\n", 
+    "stdout_lines": [
+        "my host name is web2.web.com."
+    ]
 }
 ```
 
-### 2.3.2 测试配置客户端是否成功
+### 2.5.4 Copy 模块
 
-创建 `/tmp/test.conf` ，将配置文件传输到所有客户端 `/tmp` 下，检测是否成功：
+**功能：**从 ansible 服务器主控端复制文件到远程主机（支持文件和文件夹）
 
 ```shell
-[root@ops ~]# touch /tmp/test.conf
-[root@ops ~]# ansible all -i 192.168.2.176,192.168.2.181 -m copy -a "src=/tmp/test.conf dest=/tmp/test.conf"
-192.168.2.176 | CHANGED => {
+ansible web -m copy -a "src=/root/copy_test dest=/root/"
+web1 | CHANGED => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python"
-    },
-    "changed": true,
-    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-    "dest": "/tmp/test.conf",
-    "gid": 0,
-    "group": "root",
-    "md5sum": "d41d8cd98f00b204e9800998ecf8427e",
-    "mode": "0644",
-    "owner": "root",
-    "secontext": "unconfined_u:object_r:admin_home_t:s0",
-    "size": 0,
-    "src": "/root/.ansible/tmp/ansible-tmp-1610176524.97-10342-150200890766442/source",
-    "state": "file",
+    }, 
+    "changed": true, 
+    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709", 
+    "dest": "/root/copy_test", 
+    "gid": 0, 
+    "group": "root", 
+    "md5sum": "d41d8cd98f00b204e9800998ecf8427e", 
+    "mode": "0644", 
+    "owner": "root", 
+    "secontext": "system_u:object_r:admin_home_t:s0", 
+    "size": 0, 
+    "src": "/root/.ansible/tmp/ansible-tmp-1610459738.61-27460-268899158778869/source", 
+    "state": "file", 
     "uid": 0
 }
-192.168.2.181 | CHANGED => {
+web2 | CHANGED => {
     "ansible_facts": {
         "discovered_interpreter_python": "/usr/bin/python"
-    },
-    "changed": true,
-    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709",
-    "dest": "/tmp/test.conf",
-    "gid": 0,
-    "group": "root",
-    "md5sum": "d41d8cd98f00b204e9800998ecf8427e",
-    "mode": "0644",
-    "owner": "root",
-    "secontext": "unconfined_u:object_r:admin_home_t:s0",
-    "size": 0,
-    "src": "/root/.ansible/tmp/ansible-tmp-1610176524.98-10344-72921048389134/source",
-    "state": "file",
+    }, 
+    "changed": true, 
+    "checksum": "da39a3ee5e6b4b0d3255bfef95601890afd80709", 
+    "dest": "/root/copy_test", 
+    "gid": 0, 
+    "group": "root", 
+    "md5sum": "d41d8cd98f00b204e9800998ecf8427e", 
+    "mode": "0644", 
+    "owner": "root", 
+    "secontext": "system_u:object_r:admin_home_t:s0", 
+    "size": 0, 
+    "src": "/root/.ansible/tmp/ansible-tmp-1610459738.63-27462-255661350308151/source", 
+    "state": "file", 
     "uid": 0
 }
+ansible web -a "ls /root/"
+web2 | CHANGED | rc=0 >>
+copy_test
+web1 | CHANGED | rc=0 >>
+copy_test
 ```
 
-## 2.4 Ansible 资产
+### 2.5.5 Fetch 模块
 
-Ansible 的资产为**静态资产**和**动态资产**。
-
-### 2.4.1 静态资产
-
-默认静态资产文件位于 `/etc/ansible/hosts`
+**功能：**从远程主机提取文件至 ansible 的主控端，copy 相反，目前不支持目录
 
 ```shell
-[root@ops ~]# ls /etc/ansible/
-ansible.cfg  hosts  roles
-[root@ops ansible]# cat hosts
+ansible web -m fetch -a "src=/etc/ssh/sshd_config dest=/root/"
+web2 | CHANGED => {
+    "changed": true, 
+    "checksum": "f2b054756f78acb1169cbc8b8f347a69630cb8bc", 
+    "dest": "/root/web2/etc/ssh/sshd_config", 
+    "md5sum": "40d961cd3154f0439fcac1a50bd77b96", 
+    "remote_checksum": "f2b054756f78acb1169cbc8b8f347a69630cb8bc", 
+    "remote_md5sum": null
+}
+web1 | CHANGED => {
+    "changed": true, 
+    "checksum": "f2b054756f78acb1169cbc8b8f347a69630cb8bc", 
+    "dest": "/root/web1/etc/ssh/sshd_config", 
+    "md5sum": "40d961cd3154f0439fcac1a50bd77b96", 
+    "remote_checksum": "f2b054756f78acb1169cbc8b8f347a69630cb8bc", 
+    "remote_md5sum": null
+}
 
-# Ex 1: 无组的主机, 需要在所有组的前面。
+tree
+.
+├── web1
+│   └── etc
+│       └── ssh
+│           └── sshd_config
+└── web2
+    └── etc
+        └── ssh
+            └── sshd_config
 
-## green.example.com
-## blue.example.com
-## 192.168.100.1
-## 192.168.100.10
-
-# Ex 2: 属于 'webservers' group
-
-## [webservers]
-## alpha.example.org
-## beta.example.org
-## 192.168.1.100
-## 192.168.1.110
-
-# If you have multiple hosts following a pattern you can specify
-# them like this:
-
-## www[001:006].example.com
-
-# Ex 3: A collection of database servers in the 'dbservers' group
-
-## [dbservers]
-##
-## db01.intranet.mydomain.net
-## db02.intranet.mydomain.net
-## 10.25.1.56
-## 10.25.1.57
-
-# Here's another example of host ranges, this time there are no
-# leading 0s:
-
-## db-[99:101]-node.example.com
-
+6 directories, 3 files
 ```
 
-#### 自定义资产文件
+### 2.5.6 File 模块
 
-创建自定义资产文件 test.ini
+**功能：**设置文件属性（可以创建文件，设置文件属组或者权等）
 
 ```shell
-[root@ops ~]# cat test.ini
-[test]
-192.168.2.176
-192.168.2.181
+# 在 web 组主机创建 file_test 文件
+ansible web -m file -a 'path=/root/file_test.txt state=touch'
+web2 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": true, 
+    "dest": "/root/file_test.txt", 
+    "gid": 0, 
+    "group": "root", 
+    "mode": "0644", 
+    "owner": "root", 
+    "secontext": "unconfined_u:object_r:admin_home_t:s0", 
+    "size": 0, 
+    "state": "file", 
+    "uid": 0
+}
+web1 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": true, 
+    "dest": "/root/file_test.txt", 
+    "gid": 0, 
+    "group": "root", 
+    "mode": "0644", 
+    "owner": "root", 
+    "secontext": "unconfined_u:object_r:admin_home_t:s0", 
+    "size": 0, 
+    "state": "file", 
+    "uid": 0
+}
+
+ansible web -a 'ls /root/'
+web1 | CHANGED | rc=0 >>
+file_test.txt
+web2 | CHANGED | rc=0 >>
+file_test.txt
+
+# 更改文件权限和属主
+ansible web -m file -a 'path=/root/file_test.txt owner=test mode=777'
+
+# 创建软链接
+ansible web -m file -a 'src=/root/file_test.txt dest=/root/file.link state=link'
 ```
 
-列出自定义资产文件里的所有主机 `ansible all -i test.ini --list-hosts`，或者列出某个组的主机 `ansible test -i test.ini --list-hosts`
+### 2.5.7 Unarchive 模块
+
+**功能：**解包解压缩
+
+实现有两种用法：
+
+1. 将 ansible 主机上的压缩包传到远程主机后解压缩至特定目录，设置 copy=yes
+2. 将远程主机上的某个压缩包解压缩到指定路径下，设置 copy=no
+
+常见参数：
+
+- copy：默认为 yes，当 copy=yes，拷贝的文件是从 ansible 主机复制到远程主机上，如果设置为 copy=no，会在远程主机上寻找 src 源文件
+- remote_src：和 copy 功能一样且互斥，yes 表示在远程主机，不在 ansible 主机，no 表示文件在 ansible 主机上
+- src：源路径，可以是a nsible 主机上的路径，也可以是远程主机上的路径，如果是远程主机上的路径，则需要设置 copy=no
+- dest：远程主机上的目标路径
+- mode：设置解压缩后的文件权限
 
 ```shell
-[root@ops ~]# ansible all -i test.ini --list-hosts
-  hosts (2):
-    192.168.2.176
-    192.168.2.181
+# 将 ansible 主机的 /etc/ 打包压缩，并解压到 web 组主机的 /tmp 目录下
+tar zcvf etc.tar.gz /etc/
+ls
+etc.tar.gz
+ansible web -m unarchive -a 'src=/root/etc.tar.gz dest=/tmp'
 ```
 
-<font color=red>提示：可在 IP 后面加入端口号，如 192.168.2.176:2333 (2333端口为改后的ssh端口)</font>
+### 2.5.8 Hostname 模块
 
+**功能：**管理主机名
 
+```
 
-
-
+```
