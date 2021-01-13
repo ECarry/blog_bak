@@ -55,7 +55,7 @@ Ansible is an IT automation tool. It can configure systems, deploy software, and
 - 被控端如开启 SELinux 需要安装 libselinux-python
 - windows 不能做为主控端
 
-# 一、安装
+# 一、 安装
 
 测试环境：
 
@@ -90,7 +90,7 @@ ansible 2.9.16
 
 `pip install ansible`
 
-# 二、Ansible 工具及演示
+# 二、 Ansible 工具及演示
 
 ## 2.1 管理节点与被管理节点建立 ssh 信任关系
 
@@ -684,6 +684,197 @@ ansible web -m unarchive -a 'src=/root/etc.tar.gz dest=/tmp'
 
 **功能：**管理主机名
 
+```shell
+ ansible <host> -m hostname -a "name=hostname"
+ ansible <ip> -m hostname -a 'name=hostname'
 ```
 
+### 2.5.9 Cron 模块
+
+**功能：**计划任务
+
+支持时间：**minute，hour，day，month，weekday**
+
+```shell
+#在 web 组主机上创建 cron 任务
+ansible web -m cron -a 'hour=0 minute=0 name="say hello" job=/root/cron_test.sh'
+# 检查是否创建任务成功
+ansible web -a 'cat /var/spool/cron/root'
+web2 | CHANGED | rc=0 >>
+#Ansible: say hello
+0 0 * * * /root/cron_test.sh
+web1 | CHANGED | rc=0 >>
+#Ansible: say hello
+0 0 * * * /root/cron_test.sh
+# 禁用计划任务
+ansible web -m cron -a 'hour=0 minute=0 name="say hello" job=/root/cron_test.sh disable=yes'
+# 再启用计划任务
+ansible web -m cron -a 'hour=0 minute=0 name="say hello" job=/root/cron_test.sh disable=no'
+# 删除计划任务
+ansible web -m cron -a 'name="say hello" state=absent'
 ```
+
+### 2.5.10 Yum 模块
+
+**功能：**管理软件包
+
+```shell
+# 安装软件包
+ansible web -m yum -a 'name=httpd'
+# 查看是否安装成功
+ansible web -a 'rpm -qa|grep httpd'
+web2 | CHANGED | rc=0 >>
+httpd-2.4.6-97.el7.centos.x86_64
+web1 | CHANGED | rc=0 >>
+httpd-2.4.6-97.el7.centos.x86_64
+# 删除软件包
+ansible web -m yum -a 'name=httpd state=absent'
+```
+
+### 2.5.11 User 模块
+
+**功能：**管理用户
+
+```shell
+# 创建用户,comment:用户描述 home：指定home目录 group：指定组
+ansible web -m user -a 'name=web_user comment="web user" home=/web/web_user group=root'
+
+ansible all -m user -a 'name=nginx comment=nginx uid=88 group=nginx groups="root,daemon" shell=/sbin/nologin system=yes create_home=no  home=/data/nginx non_unique=yes'
+
+# 删除用户,remove:删除home目录
+ansible web -m user -a 'name=web_user state=absent remove=yes'
+```
+
+### 2.5.12 Lineinfile 模块
+
+ansible 在使用 sed 进行替换时，经常会遇到需要转义的问题，而且 ansible 在遇到特殊符号进行替换时，存在问题，无法正常进行替换。其实在 ansible 自身提供了两个模块：**lineinfile 模块**和**replace 模块**，可以方便的进行替换
+
+**功能：**相当于sed，可以修改文件内容
+
+```shell
+# 关闭 web 组主机 selinux
+ansible web -a 'cat /etc/selinux/config'
+web1 | CHANGED | rc=0 >>
+
+SELINUX=enforcing
+SELINUXTYPE=targeted 
+
+web2 | CHANGED | rc=0 >>
+
+SELINUX=enforcing
+SELINUXTYPE=targeted 
+
+ansible web -m lineinfile -a "path=/etc/selinux/config regexp='^SELINUX=' line='SELINUX=disabled'"
+web2 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "backup": "", 
+    "changed": true, 
+    "msg": "line replaced"
+}
+web1 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "backup": "", 
+    "changed": true, 
+    "msg": "line replaced"
+}
+ansible web -a 'cat /etc/selinux/config'web1 | CHANGED | rc=0 >>
+
+SELINUX=disabled
+SELINUXTYPE=targeted 
+
+web2 | CHANGED | rc=0 >>
+
+SELINUX=disabled
+SELINUXTYPE=targeted 
+
+# 删除 /etc/fstab 以 # 开头的行
+ansible web -m lineinfile -a 'dest=/etc/fstab state=absent regexp="^#"'
+web1 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "backup": "", 
+    "changed": true, 
+    "found": 7, 
+    "msg": "7 line(s) removed"
+}
+web2 | CHANGED => {
+    "ansible_facts": {
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "backup": "", 
+    "changed": true, 
+    "found": 7, 
+    "msg": "7 line(s) removed"
+}
+```
+
+### 2.5.13 Replace 模块
+
+该模块有点类似于sed命令，主要也是基于正则进行匹配和替换
+
+```shell
+# 注释所有以 UUID 开头的行
+ansible all -m replace -a "path=/etc/fstab regexp='^(UUID.*)' replace='#\1'"  
+# 将注释的行去掉
+ansible all -m replace -a "path=/etc/fstab regexp='^#(.*)' replace='\1'"
+```
+
+### 2.5.14 Setup 模块
+
+**功能：** setup 模块来收集主机的系统信息，这些 facts 信息可以直接以变量的形式使用，但是如果主机较多，会影响执行速度，可以使用 `gather_facts: no` 来禁止 Ansible 收集 facts 信息
+
+```shell
+# 收集主机的所有信息
+ansible web -s setup
+
+# 收集指定信息
+# 内存信息
+ansible web -s setup -a 'filter=ansible_memtotal_mb'
+web1 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_memtotal_mb": 7818, 
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": false
+}
+web2 | SUCCESS => {
+    "ansible_facts": {
+        "ansible_memtotal_mb": 7818, 
+        "discovered_interpreter_python": "/usr/bin/python"
+    }, 
+    "changed": false
+}
+```
+
+# 三、 Playbook
+
+## 3.1 Playbook 简介
+
+
+## 3.2 YAML
+
+### 3.2.1 YAML 语言
+
+<font color=green>YAML: YAML Ain't Markup Language</font>
+
+YAML 是 "YAML Ain't a Markup Language"（YAML 不是一种标记语言）的递归缩写。在开发的这种语言时，YAML 的意思其实是："Yet Another Markup Language"（仍是一种标记语言）。
+
+YAML 的语法和其他高级语言类似，并且可以简单表达清单、散列表、标量等数据形态。它使用空白符号缩进和大量依赖外观的特色，特别适合用来表达或编辑数据结构、各种配置文件、倾印调试内容、文件大纲（例如：许多电子邮件标题格式和YAML非常接近）。
+
+<font color=red>YAML 的配置文件后缀为 .yml</font>
+
+### 3.2.2 YAML 语法
+
+- 大小写敏感
+- 使用缩进表示层级关系
+- 缩进不允许使用tab，只允许空格
+- 缩进的空格数不重要，只要相同层级的元素左对齐即可
+- '#'表示注释
+
+学习网站：[YAML 入门教程-菜鸟教程](https://www.runoob.com/w3cnote/yaml-intro.html)
+
