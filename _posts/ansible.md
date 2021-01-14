@@ -876,5 +876,237 @@ YAML 的语法和其他高级语言类似，并且可以简单表达清单、散
 - 缩进的空格数不重要，只要相同层级的元素左对齐即可
 - '#'表示注释
 
+### 3.2.3 数据类型
+
+YAML 支持以下几种数据类型：
+
+- 对象：键值对的集合，又称为映射（mapping）/ 哈希（hashes） / 字典（dictionary）
+- 数组：一组按次序排列的值，又称为序列（sequence） / 列表（list）
+- 纯量（scalars）：单个的、不可再分的值
+
 学习网站：[YAML 入门教程-菜鸟教程](https://www.runoob.com/w3cnote/yaml-intro.html)
+
+## 3.3 Playbook 核心元素
+
+- Hosts 执行的远程主机列表
+- Tasks 任务集
+- Variables 内置变量或自定义变量在playbook中调用
+- Templates 模板，可替换模板文件中的变量并实现一些简单逻辑的文件
+- Handlers 和 notify 结合使用，由特定条件触发的操作，满足条件方才执行，否则不执行
+- Tags 标签 指定某条任务执行，用于选择运行 playbook 中的部分代码。ansible 具有幂等性，因此会自动跳过没有变化的部分，即便如此，有些代码为测试其确实没有发生变化的时间依然会非常地长。此时，如果确信其没有变化，就可以通过 tags 跳过此些代码片断
+
+### 3.3.1 Host 组件
+
+Hosts：playbook 中的每一个 play 的目的都是为了让特定主机以某个指定的用户身份执行任务。hosts 用于指定要执行指定任务的主机，须事先定义在主机清单中
+
+```shell
+# 主机清单
+web1.web.com
+web2.web.com
+web1.web.com:web2.web.com
+192.168.1.50
+192.168.1.*
+# 主机组清单
+web:db      #或，两个组的并集
+web:&db     #与，两个组的交集
+web:!db     #在 web 组，而不在 db 组
+```
+
+示例：
+
+```yaml
+- hosts: web:db
+```
+
+### 3.3.2 Remote_user 组件
+
+remote_user: 可用于 Host 和 task 中。也可以通过指定其通过 sudo 的方式在远程主机上执行任务，其可用于 play 全局或某任务；此外，甚至可以在 sudo 时使用 sudo_user 指定 sudo 时切换的用户
+
+示例：
+
+```yaml
+- hosts: web
+  remote_user: root
+
+  tasks:
+    - name: test connection
+      ping: 
+      remote_user: ecarry
+      sudo: yes     #默认 sudo 为 root
+```
+
+### 3.3.3 Task 列表和 Action 组件
+
+play 的主体部分是 task list，task list 中有一个或多个 task,各个 task 按次序逐个在 hosts 中指定的所有主机上执行，即在所有主机上完成第一个 task 后，再开始第二个task。
+
+task 的目的是使用指定的参数执行模块，而在模块参数中可以使用变量。模块执行是幂等的，这意味着多次执行是安全的，因为其结果均一致。
+
+每个 task 都应该有其 name，用于 playbook 的执行结果输出，建议其内容能清晰地描述任务执行步骤。如果未提供 name，则 action 的结果将用于输出。
+
+#### task 两种格式：
+1. action: module arguments
+2. module: arguments 建议使用
+
+注意：shell 和 command 模块后面跟命令，而非 key=value
+
+示例：
+
+```yaml
+---
+- hosts: web
+  remote_user: root
+  tasks:
+    - name: install httpd
+      yum: name=httpd
+    - name: start httpd
+      systemd: name=httpd state=started enable=yes
+```
+
+### 3.3.4 其他组件
+
+某任务的状态在运行后为 changed 时，可通过 notify 通知给相应的 handlers，任务可以通过 tags 打标签，可在 ansible-playbook 命令上使用 -t 指定进行调用
+
+### 3.3.5 ShellScript 和 Playbook 对比
+
+使用  ShellScript 安装 apache
+
+```shell
+#!/bin/bash
+# yum 安装 apache
+yum install --quite -y httpd
+
+# 复制已配置好的配置文件
+cp /tmp/httpd.conf /etc/httpd/httpd.conf
+cp /tmp/vhosts.conf /etc/httpd/conf.d/
+
+# 启动 apache，并设置开机自启
+systemctl enable  --now httpd
+```
+
+使用 Playbook 实现
+
+```yaml
+---
+- hosts: web
+  remote_user: root
+  tasks:
+    - name: "install apache"
+      yum: name=httpd
+    - name: "cp conf"
+      copy: src=/tmp/httpd.conf dest=/etc/httpd/httpd.conf
+    - name: "cp conf"
+      copy: src=/tmp/vhosts.conf dest=/etc/httpd/conf.d/
+    - name: "start httpd"
+      systemd: name=httpd state=started enabled=yes
+```
+
+### 3.3.6 Playbook 命令
+
+格式
+
+`ansible-playbook <filename.yml> ...[options]`
+
+常用选项：
+
+- -C --check          #只检测可能会发生的改变，但不真正执行操作
+- --list-hosts        #列出运行任务的主机
+- --list-tags         #列出tag
+- --list-tasks        #列出task
+- --limit 主机列表     #只针对主机列表中的主机执行
+- -v -vv  -vvv        #显示过程
+
+示例：
+
+```shell
+# 检测
+ansible-playbook playbook_install_apache.yml -C
+
+PLAY [web] ********************************************************************************************************************
+
+TASK [Gathering Facts] ********************************************************************************************************
+ok: [web2]
+ok: [web1]
+
+TASK [install apache] *********************************************************************************************************
+changed: [web2]
+changed: [web1]
+
+TASK [start httpd] ************************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP ********************************************************************************************************************
+web1                       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+
+# 执行
+ansible-playbook playbook_install_apache.yml
+
+PLAY [web] ********************************************************************************************************************
+
+TASK [Gathering Facts] ********************************************************************************************************
+ok: [web2]
+ok: [web1]
+
+TASK [install apache] *********************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+TASK [start httpd] ************************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP ********************************************************************************************************************
+web1                       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=3    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+## 3.4 Playbook 基础实战
+
+### 3.4.1 使用 Playbook 创建 mysql 账户
+
+```yml
+---
+- hosts: db
+  remote_user: root
+# 禁用 setup 收集信息，提高速度
+  gather_facts: no
+
+  tasks:
+    - name: "add group for mysql"
+      group: name=mysql system=yes
+    - name: "add user for mysql"
+      user: name=mysql system=yes shell=/sbin/nologin system=yes group=mysql home=/data/mysql create_home=no 
+```
+
+检查是否创建成功
+
+```shell
+ansible db -a 'getent passwd mysql'
+192.168.8.144 | CHANGED | rc=0 >>
+mysql:x:998:996::/data/mysql:/sbin/nologin
+192.168.8.145 | CHANGED | rc=0 >>
+mysql:x:998:996::/data/mysql:/sbin/nologin
+```
+
+### 3.4.2 使用 Playbook 安装 nginx
+
+```yml
+---
+- hosts: db
+  remote_user: root
+# 跳过检测信息，提高速度
+  gather_facts: no
+
+  tasks:
+    - name: "add group for mysql"
+      group: name=mysql system=yes
+    - name: "add user for mysql"
+      user: name=mysql system=yes shell=/sbin/nologin system=yes group=mysql home=/data/mysql create_home=no 
+```
+
+## 3.5 Playbook handlers 和 notify
+
+Handlers 本质是 task list，类似于 Mysql 中的触发器触发行为，其中的 task 与前述的 task 并没有本质上的不同，主要用于当关注的资源发生变化时，才会采取一定的操作。而 Notify 对应的 action 可用于在每个 play 的最后被触发，这样可以避免多次有改变发生时每次都执行指定的操作，仅在所有的变化发生完后一次性地执行指定操作。
+
 
