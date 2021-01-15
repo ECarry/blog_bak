@@ -1089,7 +1089,7 @@ mysql:x:998:996::/data/mysql:/sbin/nologin
 mysql:x:998:996::/data/mysql:/sbin/nologin
 ```
 
-### 3.4.2 使用 Playbook 安装 nginx
+### 3.4.2 使用 Playbook 安装 mysql
 
 ```yml
 ---
@@ -1108,5 +1108,295 @@ mysql:x:998:996::/data/mysql:/sbin/nologin
 ## 3.5 Playbook handlers 和 notify
 
 Handlers 本质是 task list，类似于 Mysql 中的触发器触发行为，其中的 task 与前述的 task 并没有本质上的不同，主要用于当关注的资源发生变化时，才会采取一定的操作。而 Notify 对应的 action 可用于在每个 play 的最后被触发，这样可以避免多次有改变发生时每次都执行指定的操作，仅在所有的变化发生完后一次性地执行指定操作。
+
+
+监听 nginx 配置文件更改，重启 nginx 服务
+
+```yml
+---
+- hosts: web
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - name: install epel
+      yum: name=epel-release state=present
+    - name: install nginx
+      yum: name=nginx state=present
+    - name: copy config
+      copy: src=/root/nginx.conf dest=/etc/nginx/
+      # 监听文件是否改动，改动则重启 nginx，名字需要与 handlers name 相同
+      notify: restart nginx
+    - name: start nginx
+      systemd: name=nginx state=started enabled=yes
+  
+  handlers:
+    - name: restart nginx
+      systemd: name=nginx state=restarted
+    # 检测 nginx 进程是否启动，使用 kill 发送 0 信号，0 信号代表 不发送任何信号，但是系统会进行错误检查。所以经常用来检查一个进程是否存在，存在返回0；不存在返回1;
+    - name: check nginx process
+      shell: killall -0 nginx &> /tmp/nginx.log
+```
+
+安装到 web 组主机 `ansible-playbook playbook_install_nginx.yml`
+
+查看 web 主机端口：
+
+```shell
+netstat -antulp |grep 80
+tcp        0      0 0.0.0.0:80              0.0.0.0:*               LISTEN      20281/nginx: master 
+tcp6       0      0 :::80                   :::*                    LISTEN      20281/nginx: master 
+```
+
+修改配置文件，将端口改为8888，再次执行 `ansible-playbook playbook_install_nginx.yml`
+
+```shell
+ansible-playbook playbook_install_nginx.yml 
+
+PLAY [web] *********************************************************************************************************************************************************
+
+TASK [install epel] ************************************************************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [install nginx] ***********************************************************************************************************************************************
+ok: [web2]
+ok: [web1]
+
+TASK [copy config] *************************************************************************************************************************************************
+changed: [web2]
+changed: [web1]
+
+TASK [start nginx] *************************************************************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+RUNNING HANDLER [restart nginx] ************************************************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************************************************************************************************
+web1                       : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=5    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
+```
+
+查看 web 主机端口已经变为 8888：
+
+```shell
+netstat -antulp|grep 8888
+tcp        0      0 0.0.0.0:8888            0.0.0.0:*               LISTEN      4559/nginx: master  
+tcp6       0      0 :::8888                 :::*                    LISTEN      4559/nginx: master
+```
+
+## 3.6 Playbook 的 tags 组件
+
+在 playbook 中，可以利用 tags 组件，为特定 task 指定标签，当执行 playbook 时，可以只执行特定 tags 的 task，而非整个 playbook 文件
+
+示例：
+
+`vi playbook_install_nginx.yml`
+```yml
+---
+- hosts: web
+  remote_user: root
+  gather_facts: no
+
+  tasks:
+    - name: install epel
+      yum: name=epel-release state=present
+    - name: install nginx
+      yum: name=nginx state=present
+    - name: copy config
+      copy: src=/root/nginx.conf dest=/etc/nginx/
+      # 监听文件是否改动，改动则重启 nginx，名字需要与 handlers name 相同
+      notify: restart nginx
+      tags: conf
+    - name: start nginx
+      systemd: name=nginx state=started enabled=yes
+  
+  handlers:
+    - name: restart nginx
+      systemd: name=nginx state=restarted
+    # 检测 nginx 进程是否启动，使用 kill 发送 0 信号，0 信号代表 不发送任何信号，但是系统会进行错误检查。所以经常用来检查一个进程是否存在，存在返回0；不存在返回1;
+    - name: check nginx process
+      shell: killall -0 nginx &> /tmp/nginx.log
+```
+
+列出 playbook 中的标签：
+
+```shell
+ansible-playbook --list-tags playbook_install_nginx.yml 
+
+playbook: playbook_install_nginx.yml
+
+  play #1 (web): web    TAGS: []
+      TASK TAGS: [conf]
+```
+
+更改配置文件，将端口配置为8081，执行标签
+
+```shell
+ansible-playbook -t conf playbook_install_nginx.yml 
+
+PLAY [web] *********************************************************************************************************************************************************
+
+TASK [copy config] *************************************************************************************************************************************************
+changed: [web2]
+changed: [web1]
+
+RUNNING HANDLER [restart nginx] ************************************************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************************************************************************************************
+web1                       : ok=2    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=2    changed=2    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+查看主机端口：
+
+```shell
+netstat -antulp |grep 8081
+tcp        0      0 0.0.0.0:8081            0.0.0.0:*               LISTEN      6189/nginx: master  
+tcp6       0      0 :::8081                 :::*                    LISTEN      6189/nginx: master  
+```
+
+## 3.7 Playbook 使用变量
+
+**变量名：**仅能由字母、数字和下划线组成，且只能以字母开头
+
+变量的定义：
+
+`variable=value`
+
+示例：
+
+`http_port=80`
+
+变量调用方式：
+
+`{{ variable_name }}`
+
+**变量来源：**
+
+1. ansible 的 setup facts 远程主机的所有变量都可直接调用，如 {{ ansible_distribution }} linux 发行版
+2. 通过命令行指定变量，优先级最高 `ansible-playbook -e varname=value`
+3. 在playbook文件中定义
+
+```yml
+vars:
+  - var1: value1
+  - var2: value2
+```
+4. 在独立的变量 YAML 文件中定义
+```yml
+- host
+  vars_files:
+    - vars.yml
+```
+
+5. 在 /etc/ansible/hosts 中定义
+
+主机（普通）变量：主机组中主机单独定义，优先级高于公共变量
+组（公共）变量：针对主机组中所有主机定义统一变量
+
+6. 在role中定义
+
+
+
+
+### 3.7.1 使用 setup 中的变量
+
+使用 setup 中的变量来命名文件名:
+
+```yml
+---
+- hosts: web
+  remote_user: root
+
+  tasks:
+    - name: create nodename log file in /var/log
+      file: name=/var/log/{{ ansible_nodename }}.log state=touch mode=700
+```
+
+```shell
+ansible-playbook playbook_setup_var.yml
+
+PLAY [web] *********************************************************************************************************************************************************
+
+TASK [Gathering Facts] *********************************************************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [create nodename log file in /var/log] ************************************************************************************************************************
+changed: [web1]
+changed: [web2]
+
+PLAY RECAP *********************************************************************************************************************************************************
+web1                       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+```shell
+ls /var/log/ |grep web
+web1.web.com.log
+```
+
+### 3.7.2 在 playbook 中定义变量
+
+
+```yml
+---
+- hosts: web
+  remote_user: root
+  # 定义变量
+  vars:
+    - username: ecarry
+    - group: ecarry
+
+  tasks:
+    - name: create group ecarry
+    # 引用变量
+      group: name={{ group }} state=present
+    - name: create user ecarry
+      user: name={{ username }} state=present
+```
+
+执行
+
+```shell
+ansible-playbook playbook_create_user.yml 
+
+PLAY [web] *********************************************************************************************************************************************************
+
+TASK [Gathering Facts] *********************************************************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [create group ecarry] *****************************************************************************************************************************************
+ok: [web2]
+ok: [web1]
+
+TASK [create user ecarry] ******************************************************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+PLAY RECAP *********************************************************************************************************************************************************
+web1                       : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=3    changed=0    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0  
+```
+
+检查是否创建成功：
+
+```shell
+ansible web -m shell -a 'cat /etc/passwd |grep ecarry'
+web2 | CHANGED | rc=0 >>
+ecarry:x:1000:1000:ecarry:/home/ecarry:/bin/bash
+web1 | CHANGED | rc=0 >>
+ecarry:x:1000:1000:ecarry:/home/ecarry:/bin/bash
+```
+
+### 3.7.3 在 playbook 命令行中使用变量
+
 
 
