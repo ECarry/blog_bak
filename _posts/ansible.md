@@ -1309,6 +1309,8 @@ vars:
 
 使用 setup 中的变量来命名文件名:
 
+<font color=red>注意：要使用 setup 中的变量，需要 `gather_facts: yes`</font>
+
 ```yml
 ---
 - hosts: web
@@ -1398,5 +1400,37 @@ ecarry:x:1000:1000:ecarry:/home/ecarry:/bin/bash
 
 ### 3.7.3 在 playbook 命令行中使用变量
 
+写一个安装包的 playbook，在 ansible-playbook 命令行中使用 `ansible-playbook -e varname=pkgname` 定义变量
+```yml
+cat playbook_install_package.yml 
+---
+- hosts: web
+  remote_user: root
+  
+  tasks:
+    - name: install packages
+      yum: name={{ pkname }} state=present 
+```
 
+在 web 组主机安装 vim
+
+```shell
+ansible-playbook -e pkname=vim playbook_install_package.yml 
+
+PLAY [web] **********************************************************************************************************************
+
+TASK [Gathering Facts] **********************************************************************************************************
+ok: [web1]
+ok: [web2]
+
+TASK [install packages] *********************************************************************************************************
+changed: [web2]
+changed: [web1]
+
+PLAY RECAP **********************************************************************************************************************
+web1                       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+web2                       : ok=2    changed=1    unreachable=0    failed=0    skipped=0    rescued=0    ignored=0   
+```
+
+### 3.7.4 使用变量文件
 
