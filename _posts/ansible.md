@@ -1434,3 +1434,182 @@ web2                       : ok=2    changed=1    unreachable=0    failed=0    s
 
 ### 3.7.4 使用变量文件
 
+创建变量文件 `pak_var.yml`：
+
+```yml
+# variable file
+package_name: nginx
+service_name: nginx
+```
+
+playbook 文件 `playbook_install_package.yml`:
+
+```yml
+---
+# isntall package and config service
+- hosts: web
+  remote_user: root
+  vars_files: 
+    - pak_var.yml 
+
+  tasks:
+    - name: install epel
+      yum: name=epel-release
+    - name: install packages
+      yum: name={{ package_name }} state=present 
+    - name: start service
+      systemd: name={{ service_name }} enabled=yes state=started
+
+```
+
+### 3.7.5 主机清单文件中定义变量
+
+#### 主机变量：
+
+在 inventory 主机清单文件中为指定的主机定义变量以便于在playbook中使用
+```
+[web]
+web1.web.com http_port=80 
+web2.web.com http_port=8080
+```
+
+#### 组（公共）变量
+
+在 inventory 主机清单文件中赋予给指定组内所有主机上的在 playbook 中可用的变量，如果和主机变是同名，优先级低于主机变量
+```
+[web]
+web1.web.com
+web2.web.com
+
+[web:vars]
+ntp_server=ntp.magedu.com
+nfs_server=nfs.magedu.com
+```
+
+## 3.8 Playbook template
+
+模板是一个文本文件，可以做为生成文件的模版，并且模板文件中还可嵌套 jinja 语法
+
+### 3.8.1 jinja 语言
+
+
+
+
+### 3.8.2 template
+
+**功能：**可以根据和参考模块文件，动态生成相类似的配置文件
+
+**template文件**必须存放于 **templates 目录**下，且命名为 **.j2** 结尾
+
+
+利用 template 文件 `nginx.conf.j2` 配置 nginx：
+
+```j2
+# For more information on configuration, see:
+#   * Official English Documentation: http://nginx.org/en/docs/
+#   * Official Russian Documentation: http://nginx.org/ru/docs/
+
+# 从 ansible setup 获取主机 CPU 信息，为 nginx 配置进程数
+worker_processes {{ ansible_processor_vcpus }};
+```
+
+playbook 文件 `install_nginx.yml`：
+
+```yml
+---
+# install nginx and config with template
+- hosts: web
+  remote_user: root
+
+  tasks:
+    - name: install epel
+      yum: name=epel-release state=present
+    - name: install nginx
+      yum: name=nginx state=present
+    - name: template config nginx
+      template: src=nginx.conf.j2 dest=/etc/nginx/nginx.conf
+      notify: restart nginx
+    - name: start nginx
+      systemd: name=nginx state=started enabled=yes
+
+  handlers:
+    - name: restart nginx
+      systemd:  name=nginx state=restarted
+```
+
+template 支持算数运算：
+
+```j2
+# vim nginx.conf.j2 
+worker_processes {{ ansible_processor_vcpus**2 }};    
+worker_processes {{ ansible_processor_vcpus+2 }}; 
+```
+
+### 3.8.3 template 的流程控制
+
+### 3.8.3 template 使用 when
+
+
+# 四、 Roles
+
+**角色**是 ansible 自1.2版本引入的新特性，用于**层次性**、**结构化**地组织 playbook。roles 能够根据层次型结构自动装载变量文件、tasks 以及handlers 等。要使用 roles 只需要在 playbook 中使用 include 指令即可。简单来讲，roles 就是通过分别将**变量**、**文件**、**任务**、模**板**及**处理器**放置于单独的目录中，并可以便捷地 include 它们的一种机制。角色一般用于基于主机构建服务的场景中，但也可以是用于构建守护进程等场景中
+
+**roles：**多个角色的集合，可以将多个的 role（如：mysql、nginx等），分别放至roles目录下的独立子目录中
+
+## 4.1 Roles 的目录结构
+
+![](/img/ansible/ansible_4.png)
+![](/img/ansible/ansible_3.png)
+
+## 4.2 Roles 各目录作用
+
+roles/project/ :项目名称,有以下子目录
+
+- files/ ：存放由 copy 或 script 模块等调用的文件
+- templates/：template 模块查找所需要模板文件的目录
+- tasks/：定义 task，role 的基本元素，至少应该包含一个名为 main.yml 的文件；其它的文件需要在此文件中通过 include 进行包含
+- handlers/：至少应该包含一个名为 main.yml 的文件；其它的文件需要在此文件中通过 include 进行包含
+- vars/：定义变量，至少应该包含一个名为 main.yml 的文件；其它的文件需要在此文件中通过 include 进行包含
+- meta/：定义当前角色的特殊设定及其依赖关系,至少应该包含一个名为 main.yml 的文件，其它文件需在此文件中通过 include 进行包含
+- default/：设定默认变量时使用此目录中的 main.yml 文件，比 vars 的优先级低
+
+## 4.3 创建 Roles
+
+1. 创建以 roles 命名的目录
+2. 在 roles 目录中分别创建以各角色名称命名的目录，如 nginx 等
+3. 在每个角色命名的目录中分别创建 files、handlers、meta、tasks、templates 和 vars 目录；用不到的目录可以创建为空目录，也可以不创建
+4. 在 playbook 文件中，调用各角色
+
+示例：创建 nginx roles
+
+```bash
+tree nginx/
+nginx/
+├── files
+├── tasks
+│   ├── install_nginx.yml
+│   ├── main.yml
+│   └── restart.yml
+└── vars
+    └── main.yml
+
+3 directories, 4 files
+```
+
+## 4.4 Playbook 调用 Roles
+
+### 4.4.1 方法1
+
+```yml
+---
+- hosts: web
+  remote_user: root
+  roles:
+    - nginx
+    - mysql
+```
+
+## 4.5 Roles 实战
+
+### 4.5.1 实现 nginx 角色
+
