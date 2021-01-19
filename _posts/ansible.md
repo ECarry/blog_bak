@@ -1609,7 +1609,93 @@ nginx/
     - mysql
 ```
 
-## 4.5 Roles 实战
+### 4.4.2 方法2
 
-### 4.5.1 实现 nginx 角色
+键 role 用于指定角色名称，后续的 k/v 用于传递变量给角色
 
+```yml
+---
+- hosts: web
+  remote_user: root
+  roles:
+    - { role: nginx, username: nginx}
+    - mysql
+```
+
+### 4.4.3 方法3
+
+还可基于条件测试实现角色调用
+
+```yml
+---
+- hosts: all
+  remote_user: root
+  roles:
+    - { role: nginx, username: nginx, when: ansible_distribution_major_version == ‘7’ }
+    - mysql
+```
+
+## 4.5 Roles 中使用 tags
+
+```yml
+#nginx-role.yml
+---
+- hosts: websrvs
+  remote_user: root
+  roles:
+    - { role: nginx ,tags: [ 'nginx', 'web' ] ,when: ansible_distribution_major_version == "6“ }
+    - { role: httpd ,tags: [ 'httpd', 'web' ]  }
+    - { role: mysql ,tags: [ 'mysql', 'db' ] }
+    - { role: mariadb ,tags: [ 'mariadb', 'db' ] }
+
+ansible-playbook --tags="nginx,httpd,mysql" nginx-role.yml
+```
+
+## 4.6 Roles 实战
+
+### 4.6.1 实现 nginx 角色
+
+目录结构：
+
+![](/img/ansible/ansible_5.jpg)
+
+- files: 存放 nginx 配置文件，使用 copy 模块复制到主机
+- nginx/templates: 存放 nginx 配置模版文件
+
+```yml
+# playbook/roles/nginx/handlers/main.yml
+- name: restart nginx
+  systemd:  name=nginx state=restarted
+
+# playbook/roles/nginx/tasks/config.yml
+- name: config nginx
+  template: src=nginx.conf.j2 dest=/etc/nginx/nginx.conf
+  notify: restart nginx
+
+# playbook/roles/nginx/tasks/install.yml
+- name: install epel
+  yum: name=epel-release state=present
+- name: install nginx
+  yum: name=nginx state=present
+
+# playbook/roles/nginx/tasks/main.yml
+- include: install.yml
+- include: config.yml
+- include: start.yml
+
+# playbook/roles/nginx/tasks/start.yml
+- name: start nginx
+  systemd: name=nginx state=started enabled=yes
+
+# playbook/nginx_role.yml
+---
+- hosts: web
+  remote_user: root
+
+  roles:
+    - nginx
+
+
+ansible-playbok nginx_role.yml
+
+```

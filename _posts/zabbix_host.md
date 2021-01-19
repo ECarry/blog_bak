@@ -2,7 +2,7 @@
 layout: post
 title: Zabbix 5.0 LTS 添加主机及监控
 tags: [Zabbix]
-index_img: https://th.wallhaven.cc/small/5w/5w26x1.jpg
+index_img: /img/zabbix/zabbix_logo.jpg
 banner_img: https://w.wallhaven.cc/full/5w/wallhaven-5w26x1.jpg
 categories: [Zabbix]
 date: 2020-10-10 09:18:28

@@ -2,7 +2,7 @@
 layout: post
 title: 在 CentOS 7 下 搭建 Zabbix 5.0 LTS 日志
 tags: [Zabbix]
-index_img: https://th.wallhaven.cc/small/4d/4dveeg.jpg
+index_img: /img/zabbix/zabbix_logo.jpg
 banner_img: https://w.wallhaven.cc/full/4d/wallhaven-4dveeg.jpg
 categories: [Zabbix]
 date: 2020-08-27 10:45:40
