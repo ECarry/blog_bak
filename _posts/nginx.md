@@ -1,6 +1,6 @@
 ---
 layout: post
-title: Nginx 简单配置
+title: Nginx
 tags: [Nginx]
 index_img: https://th.wallhaven.cc/small/k9/k9vygm.jpg
 banner_img: https://w.wallhaven.cc/full/k9/wallhaven-k9vygm.png
@@ -20,6 +20,10 @@ Nginx 相对于 Apache 优点：
 - 支持 PHP cgi 方式和 FastCGI 方式
 - 可作为缓存服务器、邮件代理服务器
 - 配置代码简洁且容易上手
+
+对于运维，关注点：
+
+- 服务端网络
 
 ## 1.1 静态页面
 

@@ -14,6 +14,10 @@ Zabbix 是一个基于 WEB 界面的提供**分布式系统监视**以及**网�
 
 <!-- more -->
 
+{% note success %}
+服务端及客户端安装配置文档：[在 CentOS 7 下 搭建 Zabbix 5.0 LTS 日志](https://ecarry.cc/2020/08/27/zabbix_install/)
+{% endnote %}
+
 # 一、 Zabbix 监控架构
 
 ## 1.1 Zabbix 监控架构
@@ -73,5 +77,5 @@ Zabbix 是一个基于 WEB 界面的提供**分布式系统监视**以及**网�
 
 ## 2.1 Zabbix 组件
 
-
+ ![](/img/zabbix/zabbix_3.png)
 

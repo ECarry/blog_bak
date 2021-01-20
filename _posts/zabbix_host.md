@@ -12,3 +12,16 @@ date: 2020-10-10 09:18:28
 
 ---------------------------------------------------
 
+# 一、 添加主机
+
+首先创建**主机群组**，如 web组、DB组 等等
+
+![](/img/zabbix_host/zabbix_host_3.jpg)
+
+打开 WEB UI，在 **配置**--> **主机** 选项
+
+![](/img/zabbix_host/zabbix_host.png)
+
+点击添加主机
+
+![](/img/zabbix_host/zabbix_host_4.jpg)
