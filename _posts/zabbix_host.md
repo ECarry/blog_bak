@@ -237,3 +237,41 @@ LogRemoteCommands=1             # 把接收的远程命令记入日志
 systemctl restart zabbix-agent.service
 ```
 
+发送第一条命令后，服务没起来，则执行第二步骤：
+
+![](/img/zabbix_host/zabbix_host_31.png)
+
+服务起来后，可以添加**恢复操作**，发送消息给管理者，服务已经 up：
+
+![](/img/zabbix_host/zabbix_host_32.jpg)
+
+# 五、 ZABBIX 可视化
+
+数据日积月累，想要更直观的了解到各项数据的情况，图形无疑是最佳选择。zabbix 提供了众多的可视化工具直观展示，如 graph、screen 及 map 等。前面也看到过一些简单的图形展示。如果想要把多个相关的数据定义在同一张图上去查看，就需要去自定义图形
+
+## 5.1 自定义图形（Graphs）
+
+自定义图形中可以集中展示多个时间序列的数据流。支持四种不同形式的图形
+
+- **线状图**(normal)
+- **堆叠面积图**(stacked)
+- **饼图**(pie)
+- **分离型饼图**(exploded)
+
+示例：
+
+创建一个线状图，记录网络 io 状态
+
+![](/img/zabbix_host/zabbix_host_33.jpg)
+
+![](/img/zabbix_host/zabbix_host_34.jpg)
+
+可以在监测-->主机-->图形查看创建的图形：
+
+![](/img/zabbix_host/zabbix_host_35.jpg)
+
+# 六、 ZABBIX 模版
+
+## 6.1 创建模版
+
+
