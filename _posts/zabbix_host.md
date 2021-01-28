@@ -275,3 +275,18 @@ systemctl restart zabbix-agent.service
 ## 6.1 创建模版
 
 
+# 七、 ZABBIX 用户参数
+
+自定义用户参数，也就是自定义 key，有时可能想要运行一个代理检查，而不是 Zabbix 的预定义，就可以编写一个命令来检索需要的数据，并将其包含在代理配置文件("UserParameter"配置参数)的用户参数中
+
+## 7.1 用法格式 syntax
+
+UserParameter=<key>,<command>
+- A user parameter also contains a key 
+- The key will be necessary when configuring an item
+- Note: Need to restart the agent service
+
+## 7.2 示例
+
+
+
