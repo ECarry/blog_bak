@@ -413,7 +413,7 @@ CentOS Linux release 8.2.2004 (Core)
 
 一次性删除多个容器：
 
-- `docker rm -f $(docker pa -a -q)`
+- `docker rm -f $(docker ps -a -q)`
 - `docker ps -a -q | xargs docker rm`
 
 ## 3.4 比较重要的命令
@@ -713,6 +713,26 @@ local               nginx_vol
 - 当 Docker 主机的文件或目录结构保证与容器所需的绑定挂载一致时
 
 ## 5.3 容器网络
+
+### 5.3.1 docker0 veth-pair 
+
+Docker 使用的是 Linux 的桥接，宿主机中是一个 Docker 容器的网桥 docker0
+
+![](/img/Docker/docker_14.png)
+
+成对的虚拟设备接口，它们都是成对出现的，当运行容器后，查看网络设备：
+
+![](/img/Docker/docker_12.jpg)
+
+容器内地址：
+
+![](/img/Docker/docker_13.jpg)
+
+**Docker 中的所有的网络接口都是虚拟的，虚拟的转发效率高**，只要删除容器，对应的网桥一对就会自动删除
+
+### 5.3.2 link
+
+
 
 
 # 六、 DockerFile
