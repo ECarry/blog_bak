@@ -98,3 +98,6 @@ volumes:
   db_data: {}
 ```
 
+启动（后台启动 -d）：
+
+`docker-compose up -d`
