@@ -83,10 +83,12 @@ $ sudo yum remove docker \
 sudo yum install -y yum-utils device-mapper-persistent-data lvm2
 # Step 2: 添加软件源信息
 sudo yum-config-manager --add-repo https://mirrors.aliyun.com/docker-ce/linux/centos/docker-ce.repo
-# Step 3: 更新 yum 软件包索引并安装Docker-CE
+# Step 3: 替换成 aliyun 软件源
+sudo sed -i 's+download.docker.com+mirrors.aliyun.com/docker-ce+' /etc/yum.repos.d/docker-ce.repo
+# Step 4: 更新 yum 软件包索引并安装Docker-CE
 sudo yum makecache fast
 sudo yum -y install docker-ce
-# Step 4: 开启Docker服务
+# Step 5: 开启Docker服务
 sudo service docker start
 
 # 注意：

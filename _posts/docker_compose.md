@@ -39,7 +39,7 @@ Compose 使用的三个步骤：
 
 `sudo ln -s /usr/local/bin/docker-compose /usr/bin/docker-compose`
 
-## 一、 Docker Compose YAML 编写规则
+# 二、 YAML 编写规则
 
 
 官方实例：https://docs.docker.com/compose/compose-file/compose-file-v3/
