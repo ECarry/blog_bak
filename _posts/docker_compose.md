@@ -77,7 +77,7 @@ services:
     restart: always
     environment:
       MYSQL_ROOT_PASSWORD: root123
-      MYSQL_DATABASES: wordpress
+      MYSQL_DATABASE: wordpress
       MYSQL_USER: wordpress
       MYSQL_PASSWORD: wordpress
 
