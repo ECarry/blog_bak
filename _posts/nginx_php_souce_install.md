@@ -44,9 +44,9 @@ nfs-utils automake libxm12 libxm12-devel libxslt libxslt-devel
 ## PHP
 
 ```shell
-./configure --prefix=/app/php --enable-mysqlnd --with-mysqli=mysqlnd --with-openssl --with-freetype-dir --with-jpeg-dir --with-png-dir --with-zlib --with-libxml-dir=/usr --with-config-file-path=/ect --with-config-file-scan-dir=/etc/php.d --enable-mbstring --enable-xml --enable-sockets --enable-fpm --enable-maintainer-zts --enable-exif --disable-fileinfo --disable-mbregex --with-freetype --with-jpeg --enable-gd  --enable-gd-jis-conv
+./configure --prefix=/app/php --with-openssl  --with-zlib  --with-config-file-path=/ect --with-config-file-scan-dir=/etc/php.d --enable-mbstring --enable-xml --enable-sockets --enable-fpm --enable-maintainer-zts --enable-exif --disable-fileinfo --disable-mbregex --with-freetype --with-jpeg --enable-gd  --enable-gd-jis-conv
 ```
-
+--with-freetype-dir --with-jpeg-dir --with-png-dir --with-libxml-dir=/usr
 
 # Systemd service
 
