@@ -15,23 +15,20 @@ date: 2021-02-23 09:31:08
 ```shell
 yum install -y epel-release && \
 yum install -y gc gcc gcc-c++ \
-pcre-devel zlib-devel \
-openssl openssl-devel zlib-devel \
-libxm12 libxm12-devel bzip2-devel libmcrypt-devel \
-sqlite-devel glibc glibc-devel pcre pcre-devel \
-systemd-devel net-tools iotop bc zip unzip zlib-devel bash-completion \
+pcre pcre-devel zlib-devel \
+openssl openssl-devel \
+libxml2 libxml2-devel bzip2-devel libmcrypt-devel \
+sqlite-devel glibc glibc-devel  \
+systemd-devel net-tools iotop bc zip unzip bash-completion \
 nfs-utils automake libxslt libxslt-devel
 ```
 
 ## PHP
 
-```shell
-yum install epel-release -y && \
-yum install -y libxm12-devel bzip2-devel \
-libmcrypt-devel sqlite-devel gc gcc gcc-c++ \
-glibc glibc-devel pcre pcre-devel openssl openssl-devel \
-systemd-devel net-tools iotop bc zip unzip zlib-devel bash-completion \
-nfs-utils automake libxm12 libxm12-devel libxslt libxslt-devel
+
+
+ 
+
 ```
 
 # 安装配置
