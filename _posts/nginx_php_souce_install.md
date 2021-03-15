@@ -20,7 +20,7 @@ openssl openssl-devel \
 libxml2 libxml2-devel bzip2-devel libmcrypt-devel \
 sqlite-devel glibc glibc-devel  \
 systemd-devel net-tools iotop bc zip unzip bash-completion \
-nfs-utils automake libxslt libxslt-devel
+nfs-utils automake libxslt libxslt-devel libpng-devel
 ```
 
 ## PHP
